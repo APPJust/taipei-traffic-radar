@@ -1,10 +1,123 @@
 <!doctype html>
-<html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#122c32"><title>臺北路況雷達｜最塞路段排行</title><link rel="stylesheet" href="style.css"><script defer src="app.js"></script></head>
-<body><header><div class="brand"><span class="logo">↗</span> 臺北路況雷達 <small>TAIPEI TRAFFIC</small></div><span class="live">● 每分鐘即時更新</span></header>
-<main><section class="intro"><div><p class="eyebrow">出發前，先看一眼路況。</p><h1>臺北市區<br><span>最塞路段排行</span></h1><p class="subtitle">從全市偵測路段，找到此刻需要多留一點時間的地方。</p></div><div class="refresh"><button id="refresh">↻ 立即更新</button><p>下次更新 <strong id="countdown">60</strong> 秒</p></div></section>
-<section class="status" aria-live="polite"><span id="status">正在連線至臺北市交通資料…</span><div>資料時間 <b id="dataTime">—</b><br>最後成功擷取 <b id="fetchTime">—</b></div></section><div id="warning" role="alert" hidden></div>
-<section class="metrics" aria-label="全市重點數字"><article><p>監測路段</p><strong id="total">—</strong><small id="coverage">等待資料</small></article><article><p>平均車速</p><strong id="average">—</strong><small>km/h · 有效路段簡單平均</small></article><article class="danger"><p>低速警示路段</p><strong id="slow">—</strong><small>平均車速低於 20 km/h</small></article><article><p>目前最慢車速</p><strong id="minimum">—</strong><small id="slowestName">等待資料</small></article></section>
-<section class="charts"><article class="panel"><div class="panelhead"><div><p class="eyebrow">CONGESTION RANKING</p><h2>最慢的 10 個路段</h2></div><span class="unit">km/h</span></div><div id="bars" class="bars"><p class="empty">正在讀取即時資料</p></div><p class="note">依有效平均車速由低至高排列，受下方搜尋與篩選影響。</p></article><article class="panel"><div class="panelhead"><div><p class="eyebrow">SINCE YOU OPENED</p><h2>全市平均車速變化</h2></div><span class="unit">km/h</span></div><svg id="trend" viewBox="0 0 600 270" role="img" aria-label="本次開啟後每次成功更新的全市平均車速折線圖"></svg><p id="trendNote" class="note">開啟後開始記錄；累積兩筆資料即可連成折線。</p><div class="legend"><span>● 全市平均車速</span><span class="red">┄ 20 km/h 警示線</span></div></article></section>
-<section class="panel ranking"><div class="panelhead"><div><p class="eyebrow">ROAD CONDITIONS</p><h2>路段即時排行</h2></div><span id="resultCount" class="unit">—</span></div><div class="filters"><label>搜尋路段<input id="search" type="search" placeholder="例如：忠孝、建國、路段編號"></label><label>路況<select id="filter"><option value="all">全部路段</option><option value="slow">低速警示 · 低於 20</option><option value="normal">20 km/h 以上</option><option value="invalid">無有效車速</option></select></label><label>排序<select id="sort"><option value="asc">最慢優先</option><option value="desc">最快優先</option><option value="name">路段名稱</option></select></label></div><p class="note">數字卡與折線顯示全市；搜尋與篩選適用於長條圖及下方排行。無效車速不納入統計。</p><div id="roads"></div><button id="more" class="more" hidden>顯示更多路段</button></section>
-<footer><h3>資料來源與說明</h3><p>提供機關：臺北市交通管制工程處 · 資料集：臺北市車輛偵測器路段車速</p><p><a href="https://data.gov.tw/dataset/128709" target="_blank" rel="noopener">政府資料開放平臺 ↗</a>　<a href="https://tcgbusfs.blob.core.windows.net/blobtisv/GetVD.xml.gz">原始 gzip XML</a>　<a href="https://data.gov.tw/license" target="_blank" rel="noopener">政府資料開放授權條款－第 1 版</a></p><p>每 60 秒直接擷取原始資料。路況以資料時間為準；超過 30 分鐘未更新會顯示延遲提醒。無有效車速：缺值、負值或無車流時的零速。有效且有車流的零速仍列入警示。折線僅記錄本次開啟後最近 120 次成功更新。</p><p class="signature">署名：<strong id="signature">資通系 李振偉老師</strong></p></footer></main></body></html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#f6f7f8"><meta name="description" content="臺北快速道路即時車速與車流看板">
+<title>臺北快速道路車速看板</title>
+<style>
+:root{font-family:Inter,"Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif;color:#1c2636;background:#f6f7f8;--muted:#687587;--line:#dfe4e9;--amber:#a96300;--red:#d94338;--green:#138353}
+*{box-sizing:border-box}body{margin:0;line-height:1.55}.page{width:min(1120px,calc(100% - 40px));margin:auto;padding:30px 0 38px}
+.top{display:flex;justify-content:space-between;align-items:center;gap:18px;margin-bottom:18px}.brand{display:flex;align-items:center;gap:14px}.badge19{width:48px;height:48px;display:grid;place-items:center;border-radius:11px;background:#17263e;color:#ffb817;font-weight:900;font-size:18px}
+.eyebrow{margin:0 0 3px;color:var(--amber);font-size:11px;font-weight:800;letter-spacing:.12em}h1{margin:0;font-size:clamp(23px,3vw,32px);line-height:1.25;letter-spacing:-.03em}
+button,input,select{font:inherit}.refresh{min-height:40px;padding:0 14px;border:1px solid #cdd5df;border-radius:9px;background:white;font-weight:700;cursor:pointer}.refresh:hover{background:#f9fafb}.last{margin:5px 0 0;text-align:right;color:var(--muted);font-size:11px}
+.intro{max-width:850px;margin:0 0 22px;color:#4c5869;font-size:13px}.section{margin:0 0 9px;color:#8d5800;font-size:14px;font-weight:850}
+.status{display:flex;justify-content:space-between;gap:10px;padding:10px 13px;margin-bottom:12px;border:1px solid var(--line);border-radius:10px;background:#ffffffbb;color:var(--muted);font-size:11px}.status b{color:#253246}.dot{display:inline-block;width:8px;height:8px;margin-right:7px;border-radius:50%;background:#9ba5b1}.dot.ok{background:#19a46d}.dot.error{background:#d94338}.dot.loading{background:#d18b1c}
+.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:11px;margin-bottom:24px}.metric,.panel{border:1px solid var(--line);border-radius:13px;background:#fff;box-shadow:0 6px 22px #1b2b4009}
+.metric{padding:16px 18px;min-height:115px}.label{margin:0 0 7px;color:var(--muted);font-size:11px;font-weight:700}.value{margin:0;font-size:31px;font-weight:850;line-height:1.15;font-variant-numeric:tabular-nums}.value small{margin-left:5px;color:var(--muted);font-size:11px;font-weight:600}.note{margin:7px 0 0;color:#8a95a4;font-size:10px}
+#metricAlerts{color:var(--green)}#metricAlerts.warn{color:var(--red)}.alert{display:none;padding:11px 14px;margin:-9px 0 21px;border:1px solid #ffd1ca;border-radius:10px;background:#fff3f0;color:#9c362e;font-size:12px}.alert.show{display:block}.alert strong{margin-right:6px}
+.grid{display:grid;grid-template-columns:1.45fr 1fr;gap:12px;margin-bottom:23px}.panel{padding:17px 18px;min-width:0}.panel h3{margin:0;font-size:14px}.sub{margin:3px 0 10px;color:var(--muted);font-size:10px}.chart{height:210px}.chart canvas{width:100%;height:100%}.legend{display:flex;gap:12px;flex-wrap:wrap;padding:0;margin:8px 0 0;list-style:none;color:var(--muted);font-size:10px}.legend li{display:flex;align-items:center;gap:5px}.legend i{width:8px;height:8px;border-radius:50%;background:var(--c)}
+.bars{display:grid;gap:14px;padding-top:12px}.bar{display:grid;grid-template-columns:83px 1fr 63px;align-items:center;gap:8px;font-size:10px}.track{height:9px;border-radius:9px;background:#edf0f3;overflow:hidden}.fill{height:100%;border-radius:inherit;background:var(--c);width:0}.bar b{text-align:right;font-variant-numeric:tabular-nums}.bar b.warn{color:var(--red)}
+.toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}.tools{display:flex;gap:7px}.control{height:36px;padding:0 10px;border:1px solid #d9dfe6;border-radius:8px;background:white;font-size:11px;color:#1c2636}.search{width:190px}.tablewrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;white-space:nowrap;font-size:11px;text-align:left;font-variant-numeric:tabular-nums}th{padding:9px;border-bottom:1px solid var(--line);color:#8a95a4;font-size:10px}td{padding:11px 9px;border-bottom:1px solid #edf0f3}tbody tr:last-child td{border:0}.road{font-weight:750}.speed{font-weight:850}.slow{color:var(--red)}.pill{padding:3px 8px;border-radius:20px;background:#eaf6ef;color:#147a4e;font-size:10px;font-weight:750}.pill.slow{background:#fff0ed;color:#b93a32}
+.source{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px;padding:13px 15px;border-radius:10px;background:#edf0f3;font-size:11px}.source b{display:block;margin-bottom:2px;color:#895600;font-size:10px}.source a{color:#925900}.foot{display:flex;justify-content:space-between;gap:12px;padding-top:14px;margin-top:16px;border-top:1px solid var(--line);color:var(--muted);font-size:10px}.sign{color:#253246;font-weight:800}
+@media(max-width:800px){.metrics{grid-template-columns:repeat(2,1fr)}.grid{grid-template-columns:1fr}}
+@media(max-width:560px){.page{width:calc(100% - 28px);padding:18px 0 26px}.top{gap:8px}.brand{gap:10px}.badge19{width:42px;height:42px;font-size:16px}h1{font-size:20px}.eyebrow{font-size:9px}.refresh{width:40px;height:40px;padding:0;font-size:0}.refresh:after{content:"↻";font-size:21px}.last{display:none}.intro{font-size:11px}.status{font-size:10px}.metric{min-height:104px;padding:13px}.value{font-size:27px}.metric .note{font-size:9px}.panel{padding:14px 12px}.chart{height:185px}.toolbar{align-items:flex-start;flex-direction:column}.tools{display:grid;width:100%;grid-template-columns:1fr 1fr}.search{grid-column:1/-1;width:100%}.control{width:100%;min-width:0}.source{grid-template-columns:1fr 1fr;padding:11px}.foot{flex-direction:column;gap:5px}}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+</style>
+</head>
+<body><main class="page">
+<header class="top"><div class="brand"><div class="badge19">#19</div><div><p class="eyebrow">TAIPEI · OPEN TRAFFIC DATA</p><h1>臺北快速道路車速看板</h1></div></div><div><button id="refresh" class="refresh" type="button">立即更新</button><p id="last" class="last">等待首次連線</p></div></header>
+<p class="intro">通勤路況一眼掌握。看板每分鐘讀取臺北市車輛偵測器資料，整理建國、環河、水源快速道路與市民高架的車速和車流；平均車速低於 40 公里時會立即標示。</p>
+<h2 class="section">即時路況</h2><div class="status" role="status" aria-live="polite"><span><i id="dot" class="dot loading"></i><b id="status">正在更新資料</b>　<span id="message">首次連線中</span></span><span id="countdown">自動更新 —</span></div>
+<section class="metrics" aria-label="即時統計">
+<article class="metric"><p class="label">監測路段</p><p class="value"><span id="count">—</span><small>段</small></p><p class="note">目前範圍內的偵測路段</p></article>
+<article class="metric"><p class="label">平均車速</p><p class="value"><span id="average">—</span><small>公里 / 小時</small></p><p class="note">所有有效偵測器平均值</p></article>
+<article class="metric"><p class="label">總車流量</p><p class="value"><span id="volume">—</span><small>輛</small></p><p class="note">各路段回報車流量加總</p></article>
+<article class="metric"><p class="label">低速提醒</p><p class="value"><span id="alerts">—</span><small>段</small></p><p class="note">平均車速低於 40 公里 / 小時</p></article>
+</section><div id="alert" class="alert" role="alert"></div>
+<h2 class="section">路況趨勢</h2><section class="grid">
+<article class="panel"><h3>各道路平均車速</h3><p class="sub">每次成功更新留下一筆，顯示最近 12 次</p><div class="chart"><canvas id="trend" aria-label="各道路平均車速趨勢圖"></canvas></div><ul class="legend" id="legend"></ul></article>
+<article class="panel"><h3>目前道路比較</h3><p class="sub">低於 40 公里 / 小時的道路以紅色顯示</p><div id="bars" class="bars"></div></article></section>
+<h2 class="section">路段明細</h2><article class="panel">
+<div class="toolbar"><div><h3>車輛偵測器資料</h3><p id="tableCount" class="sub">等待資料</p></div><div class="tools">
+<label><span style="position:absolute;clip:rect(0,0,0,0)">搜尋路段</span><input id="search" class="control search" type="search" placeholder="搜尋路段名稱"></label>
+<label><span style="position:absolute;clip:rect(0,0,0,0)">篩選道路</span><select id="filter" class="control"><option value="全部">全部道路</option><option>建國</option><option>環河</option><option>水源</option><option>市民</option></select></label>
+</div></div><div class="tablewrap"><table><thead><tr><th>道路 / 偵測路段</th><th>平均車速</th><th>車流量</th><th>資料時間</th><th>路況</th></tr></thead><tbody id="rows"><tr><td colspan="5" style="text-align:center;color:#687587;padding:30px">正在連線取得最新資料…</td></tr></tbody></table></div></article>
+<h2 class="section" style="margin-top:22px">資料來源</h2><div class="source">
+<div><b>提供機關</b>臺北市交通管制工程處</div><div><b>更新方式</b>每分鐘自動讀取</div><div><b>資料格式</b>gzip 壓縮 XML</div>
+<div><b>即時資料</b><a href="https://tcgbusfs.blob.core.windows.net/blobtisv/GetVD.xml.gz" target="_blank" rel="noopener">開啟資料網址 ↗</a></div>
+<div><b>資料集說明</b><a href="https://data.gov.tw/dataset/128709" target="_blank" rel="noopener">政府資料開放平臺 ↗</a></div></div>
+<p class="sub" style="margin-top:9px">資料時間為來源回報時間；抓取時間為本看板成功取得資料的時間。資料中斷時會保留最後一次成功結果並自動重試。</p>
+<footer class="foot"><span>政府資料開放授權條款第 1 版 · 實際路況以資料來源為準</span><span class="sign">資通系 李振偉老師</span></footer></main>
+<script>
+(function(){
+"use strict";
+var URLS=["https://tcgbusfs.blob.core.windows.net/blobtisv/GetVD.xml.gz","https://tcgbusfs.blob.core.windows.net/blobtisv/GetVDDATA.xml"];
+var ROUTES=[{key:"建國",label:"建國高架",color:"#3975c5"},{key:"環河",label:"環河快速",color:"#18a57b"},{key:"水源",label:"水源快速",color:"#a565d3"},{key:"市民",label:"市民高架",color:"#e49625"}];
+var LIMIT=40,KEY="taipei-traffic-dashboard-history-v1",fmt=new Intl.NumberFormat("zh-TW"),dec=new Intl.NumberFormat("zh-TW",{maximumFractionDigits:1,minimumFractionDigits:1});
+var s={rows:[],history:readHistory(),last:0,attempt:0,loading:false};
+function $(id){return document.getElementById(id)}
+function readHistory(){try{return JSON.parse(localStorage.getItem(KEY)||"[]").slice(-12)}catch(e){return[]}}
+function key(v){return String(v||"").toLowerCase().replace(/[^a-z0-9\u3400-\u9fff]/g,"")}
+function direct(el,aliases){var set=aliases.map(key),attrs=Array.from(el.attributes||[]),children=Array.from(el.children||[]),i;for(i=0;i<attrs.length;i++)if(set.indexOf(key(attrs[i].name))>=0)return attrs[i].value;for(i=0;i<children.length;i++)if(set.indexOf(key(children[i].localName||children[i].tagName))>=0)return children[i].textContent.trim();return ""}
+function num(v){var n=Number(String(v||"").replace(/,/g,"").trim());return Number.isFinite(n)&&n>=0?n:null}
+function route(name){return ROUTES.find(function(r){return name.indexOf(r.key)>=0})||null}
+function parseXML(text){
+var doc=new DOMParser().parseFromString(text,"application/xml");if(doc.querySelector("parsererror"))throw Error("資料格式不是有效的 XML");
+var list=Array.from(doc.getElementsByTagName("*")),rootTime=direct(doc.documentElement,["ExchangeTime","DataTime","UpdateTime","Timestamp"]),out=[];
+list.forEach(function(el){
+var name=direct(el,["SectionName","RoadName","VDName","RouteName","Name","Road"]).trim().replace(/\s+/g," "),speed=num(direct(el,["AvgSpd","AverageSpeed","AvgSpeed","Speed"]));
+if(!name||speed===null)return;var r=route(name);if(!r)return;
+out.push({name:name,speed:speed,volume:num(direct(el,["TotalVol","TotalVolume","Volume","Vol","TrafficVolume"]))||0,time:direct(el,["ExchangeTime","DataTime","UpdateTime","Timestamp"])||rootTime,id:direct(el,["VDID","SectionID","ID","DetectorID"]),route:r});
+});
+var unique=new Map();out.forEach(function(r){var k=(r.id||r.name)+"|"+r.speed+"|"+r.volume+"|"+r.time;if(!unique.has(k))unique.set(k,r)});
+if(!unique.size)throw Error("沒有找到符合道路的車速資料");return Array.from(unique.values())
+}
+function decode(response){return response.arrayBuffer().then(function(buf){var b=new Uint8Array(buf);if(b[0]===31&&b[1]===139){if(!("DecompressionStream" in window))throw Error("瀏覽器不支援 gzip 解壓縮");return new Response(new Blob([buf]).stream().pipeThrough(new DecompressionStream("gzip"))).text()}return new TextDecoder("utf-8").decode(buf).replace(/^\uFEFF/,"")})}
+function setStatus(kind,title,msg){$("dot").className="dot "+kind;$("status").textContent=title;$("message").textContent=msg}
+function sourceTime(v){if(!v)return"—";var d=new Date(v);return isNaN(d.getTime())?v:new Intl.DateTimeFormat("zh-TW",{month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:false}).format(d)}
+function clock(v){return new Intl.DateTimeFormat("zh-TW",{hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:false}).format(new Date(v))}
+function fetchData(){
+if(s.loading)return;s.loading=true;s.attempt=Date.now();setStatus("loading","正在更新資料","連線臺北市交通資料來源");$("refresh").disabled=true;var lastError;
+function tryUrl(i){if(i>=URLS.length)throw lastError||Error("無法連線資料來源");return fetch(URLS[i],{cache:"no-store"}).then(function(res){if(!res.ok)throw Error("來源回應 "+res.status);return decode(res)}).then(parseXML).catch(function(e){lastError=e;return tryUrl(i+1)})}
+tryUrl(0).then(function(rows){
+s.rows=rows;s.last=Date.now();s.dataTime=rows.map(function(r){return r.time}).filter(Boolean).sort().pop()||"來源未提供時間";
+var values={};ROUTES.forEach(function(r){var a=rows.filter(function(x){return x.route.key===r.key});values[r.key]=a.length?a.reduce(function(n,x){return n+x.speed},0)/a.length:null});
+s.history.push({at:s.last,values:values});s.history=s.history.slice(-12);try{localStorage.setItem(KEY,JSON.stringify(s.history))}catch(e){}
+render();setStatus("ok","資料已更新",rows.length+" 段路段 · 資料時間 "+sourceTime(s.dataTime))
+}).catch(function(e){setStatus("error",s.rows.length?"更新失敗，沿用上次資料":"暫時無法取得資料",e.message||"請稍後重試");if(!s.rows.length)empty()}).finally(function(){s.loading=false;$("refresh").disabled=false;$("last").textContent=s.last?"抓取於 "+clock(s.last):"等待首次連線";countdown()})
+}
+function safe(v){return String(v).replace(/[&<>"']/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]})}
+function rowsVisible(){var q=$("search").value.trim().toLowerCase(),f=$("filter").value;return s.rows.filter(function(r){return(!q||r.name.toLowerCase().indexOf(q)>=0)&&(f==="全部"||r.name.indexOf(f)>=0)}).sort(function(a,b){return a.name.localeCompare(b.name,"zh-Hant")})}
+function renderTable(){
+var a=rowsVisible();$("tableCount").textContent="顯示 "+fmt.format(a.length)+" / "+fmt.format(s.rows.length)+" 段路段 · 車速低於 40 即提醒";
+if(!a.length){$("rows").innerHTML='<tr><td colspan="5" style="text-align:center;color:#687587;padding:28px">沒有符合搜尋條件的路段</td></tr>';return}
+$("rows").innerHTML=a.map(function(r){var slow=r.speed<LIMIT;return"<tr><td class=\"road\">"+safe(r.name)+"</td><td class=\"speed "+(slow?"slow":"")+"\">"+dec.format(r.speed)+" km/h</td><td>"+fmt.format(r.volume)+"</td><td>"+safe(sourceTime(r.time))+"</td><td><span class=\"pill "+(slow?"slow":"")+"\">● "+(slow?"偏慢":"順暢")+"</span></td></tr>"}).join("")
+}
+function avg(a){return a.length?a.reduce(function(n,x){return n+x.speed},0)/a.length:null}
+function renderBars(){
+var a=ROUTES.map(function(r){var list=s.rows.filter(function(x){return x.route.key===r.key});return{r:r,v:avg(list)}});
+if(!a.some(function(x){return x.v!==null})){$("bars").innerHTML='<p class="sub">取得資料後顯示道路平均車速</p>';return}
+$("bars").innerHTML=a.map(function(x){var slow=x.v!==null&&x.v<LIMIT,percent=x.v===null?0:Math.min(100,x.v);return'<div class="bar"><span>'+x.r.label+'</span><span class="track"><i class="fill" style="display:block;width:'+percent+'%;--c:'+(slow?"#d94338":x.r.color)+'"></i></span><b class="'+(slow?"warn":"")+'">'+(x.v===null?"—":dec.format(x.v))+'</b></div>'}).join("")
+}
+function draw(){
+var c=$("trend"),box=c.getBoundingClientRect();if(!box.width||!box.height)return;var dpr=window.devicePixelRatio||1;c.width=box.width*dpr;c.height=box.height*dpr;var x=c.getContext("2d");x.setTransform(dpr,0,0,dpr,0,0);var w=box.width,h=box.height,p={l:31,r:8,t:10,b:25},cw=w-p.l-p.r,ch=h-p.t-p.b;x.clearRect(0,0,w,h);x.font="10px sans-serif";x.textBaseline="middle";
+for(var v=0;v<=100;v+=25){var y=p.t+ch*(1-v/100);x.beginPath();x.moveTo(p.l,y);x.lineTo(w-p.r,y);x.strokeStyle=v?"#edf0f3":"#d7dde5";x.stroke();x.fillStyle="#8994a2";x.textAlign="right";x.fillText(v,p.l-6,y)}
+var hist=s.history.slice(-12);if(!hist.length){x.fillStyle="#8490a0";x.textAlign="center";x.fillText("成功更新後開始記錄趨勢",p.l+cw/2,p.t+ch/2)}
+hist.forEach(function(item,i){var xx=hist.length===1?p.l+cw/2:p.l+i*cw/(hist.length-1);x.fillStyle="#8994a2";x.textAlign=i===0?"left":i===hist.length-1?"right":"center";x.fillText(new Intl.DateTimeFormat("zh-TW",{hour:"2-digit",minute:"2-digit",hour12:false}).format(new Date(item.at)),xx,h-8)});
+ROUTES.forEach(function(r){var pts=hist.map(function(item,i){return{x:hist.length===1?p.l+cw/2:p.l+i*cw/(hist.length-1),v:item.values&&item.values[r.key]}}).filter(function(pt){return Number.isFinite(pt.v)});if(!pts.length)return;x.beginPath();pts.forEach(function(pt,i){var yy=p.t+ch*(1-Math.min(pt.v,100)/100);if(i)x.lineTo(pt.x,yy);else x.moveTo(pt.x,yy)});x.strokeStyle=r.color;x.lineWidth=2;x.stroke();pts.forEach(function(pt){x.beginPath();x.arc(pt.x,p.t+ch*(1-Math.min(pt.v,100)/100),3,0,Math.PI*2);x.fillStyle="#fff";x.fill();x.strokeStyle=r.color;x.lineWidth=2;x.stroke()})});
+$("legend").innerHTML=ROUTES.map(function(r){return'<li><i style="--c:'+r.color+'"></i>'+r.label+"</li>"}).join("")
+}
+function render(){
+var n=s.rows.length,mean=n?s.rows.reduce(function(a,r){return a+r.speed},0)/n:0,vol=s.rows.reduce(function(a,r){return a+r.volume},0),slow=s.rows.filter(function(r){return r.speed<LIMIT});
+$("count").textContent=fmt.format(n);$("average").textContent=dec.format(mean);$("volume").textContent=fmt.format(vol);$("alerts").textContent=fmt.format(slow.length);$("alerts").className=slow.length?"warn":"";
+var alert=$("alert");alert.className="alert"+(slow.length?" show":"");if(slow.length){var samples=slow.slice(0,3).map(function(r){return safe(r.name)+" "+dec.format(r.speed)}).join("、");alert.innerHTML="<strong>"+slow.length+" 段路段低於 "+LIMIT+" 公里 / 小時</strong>"+samples+(slow.length>3?" 等，請留意行車時間。":"，請留意行車時間。")}
+renderTable();renderBars();draw();$("last").textContent="抓取於 "+clock(s.last)
+}
+function empty(){$("count").textContent="—";$("average").textContent="—";$("volume").textContent="—";$("alerts").textContent="—";$("tableCount").textContent="目前沒有成功讀取的資料";$("rows").innerHTML='<tr><td colspan="5" style="text-align:center;color:#687587;padding:30px">無法取得資料，請稍後重試</td></tr>';$("bars").innerHTML='<p class="sub">目前沒有道路資料</p>';draw()}
+function countdown(){var left=Math.max(0,Math.ceil((s.attempt+60000-Date.now())/1000));$("countdown").textContent=s.loading?"更新中…":"下次更新 "+String(Math.floor(left/60)).padStart(2,"0")+":"+String(left%60).padStart(2,"0")}
+$("refresh").addEventListener("click",fetchData);$("search").addEventListener("input",renderTable);$("filter").addEventListener("change",renderTable);window.addEventListener("resize",draw);
+if(window.ResizeObserver)new ResizeObserver(draw).observe($("trend"));fetchData();setInterval(function(){if(!s.loading)fetchData()},60000);setInterval(countdown,1000);
+})();
+</script></body></html>
 
